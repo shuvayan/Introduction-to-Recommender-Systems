@@ -1,0 +1,98 @@
+# Non-Personalized Recommender Assignment
+
+# 1.Order movies by the mean ratings:
+movie <- read.csv("C:/Users/DELL/Documents/Apowersoft Free Screen Recorder/Recording/Coursera/Recommender Systems/2.Non Personalized Recommenders/A1Ratings.csv",
+                  sep = ",",header = TRUE)
+# Get all column names:
+colnames(movie)
+
+
+mean_na <- function(x){mean(x,na.rm = T)}
+mean_ratings <- data.frame(apply(movie,2,mean_na))
+mean_ratings <- data.frame(mean_ratings,colnames(movie))
+colnames(mean_ratings)
+colnames(mean_ratings)[1]<- "movie_mean_rating"
+colnames(mean_ratings)[2]<- "movie"
+# Drop the first row
+movie_ratings <- mean_ratings[-1,]
+
+# Sort in descending order of movie ratings:
+arrange(movie_ratings,desc(movie_mean_rating))
+
+
+#2.% of ratings 4+: Calculate the percentage of ratings for each movie that are 4 or higher.
+#Order with the highest percentage first, and submit the top 5.
+
+
+# Create a function to find out the rows having ratings > = 4 and also the total rows without NA(for each movie)
+
+movie_rating_percent = movie[,-1]
+test = data.frame()
+# Find the percentages:
+columns = ncol(movie_rating_percent)
+for (i in 1:columns)
+{
+        x = data.frame(table(movie_rating_percent[,i]))
+        count_rating = sqldf("select sum(Freq) as count_rating from x where Var1 >= 4")
+        count_tot = sqldf("select sum(Freq) as count_tot from x")
+        rating_percent = (count_rating$count_rating/count_tot$count_tot)*100
+        test = rbind(test,rating_percent)
+}
+# Rename the column:        
+colnames(test)[1] <- "ratings"
+colnames(movie)[2:21]
+ratings_above_4 <- data.frame(test,colnames(movie)[2:21])
+arrange(ratings_above_4,desc(ratings))
+
+
+# Using Apply:
+tot_count <- data.frame(apply(movie,2,function(x)sum(x > 0,na.rm = T)))# This also gives the counts for the next question
+req_count <- data.frame(apply(movie,2,function(x)sum(x > 3,na.rm = T)))
+count <- data.frame(tot_count,req_count,colnames(movie))                                
+# Rename Columns:
+colnames(count)[1] <- "tot_count"
+colnames(count)[2] <- "req_count"
+colnames(count)[3] <- "movie"
+count <- count[-1,]
+count$percent_rating = (count$req_count/count$tot_count)*100
+# Arrange in descending order of rating %
+dplyr::arrange(count,desc(count[,4]))
+# Arrange in descending order of count:
+dplyr::arrange(count,desc(count[,1]))
+
+# Count the number of ratings for each movie:
+movie_ratings = movie[,-1]
+test = data.frame()
+# Find the percentages:
+columns = ncol(movie_rating_percent)
+for (i in 1:columns)
+{
+        x = data.frame(table(movie_ratings[,i]))
+        count_tot = sqldf("select sum(Freq) as count_tot from x")
+        test = rbind(test,count_tot)
+}
+ratings_of_movies <- data.frame(test,colnames(movie)[2:21])
+arrange(ratings_of_movies,desc(count_tot))
+
+
+# Find associations:
+movie_rules <- movie
+# Remove all NA's from the column of Star Wars IV:
+movie_rules <- movie_rules[-which(is.na(movie_rules[,2])),]
+count_starwars_4 <- apply(movie_rules,2,function(x)(sum(x >= 1)))[2]
+
+association_rules <- data.frame()
+columns = ncol(movie_rules)
+for (i in 3:columns)
+{
+        movie_association <- movie_rules
+        movie_association <- movie_association[-which(is.na(movie_rules[,i])),]
+        count_association <- apply(movie_association,2,function(x)(sum(x >= 1)))[2]
+        cond_prob = count_association/count_starwars_4
+        association_rules <- rbind(association_rules,cond_prob)
+        
+}
+#Merge with column names:
+association_rules <- data.frame(association_rules,colnames(movie)[3:21])
+colnames(association_rules) <- c("prob","movie")
+dplyr::arrange(association_rules,desc(prob))
